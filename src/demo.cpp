@@ -67,8 +67,8 @@ extern "C" void initdemo( demo_memory *memory ) {
 		memory->isInitialized = true;
 	}
 
-	state->xcells=12;
-	state->ycells=12;
+	state->xcells=40;
+	state->ycells=40;
 
 	int indices[state->xcells*state->ycells*6];
 	cell positiondata[state->xcells*state->ycells];

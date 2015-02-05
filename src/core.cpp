@@ -42,7 +42,6 @@ static void deleteContext (SDL_GLContext);
 static void mainloop(SDL_Window *_win);
 static int loadDemo(demo_app *demo, char *demopath);
 static void closeDemo(demo_app demo);
-static void displayInotifyEvent(struct inotify_event *i);
 
 
 
@@ -85,11 +84,15 @@ void mainloop (SDL_Window *_win) {
 
 	//set file watch
 	inotifyFd = inotify_init1(IN_NONBLOCK);
-	if (inotifyFd == -1)
+	if (inotifyFd == -1) {
 		perror("Couldn't init inotify");
+		exit(EXIT_FAILURE)
+	}
 	wd = inotify_add_watch(inotifyFd, "obj/", IN_CLOSE_WRITE);
-	if (wd == -1) 
+	if (wd == -1) {
 		perror("Couldn't inotify_add_watch");
+		exit(EXIT_FAILURE)
+	}
 
 
 	(*demo.updateshaderf)(&mem);
@@ -221,4 +224,3 @@ int loadDemo(demo_app *demo, char *demopath) {
 void closeDemo(demo_app demo) {
 	dlclose(demo.demoLib);
 }
-

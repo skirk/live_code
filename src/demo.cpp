@@ -1,6 +1,8 @@
 #include "gl_core_3_3.h"
 #include "demo.h"
 
+using namespace std;
+using namespace cv;
 
 //prototypes
 static int loadShader(const string &myBinaryFileName, GLSLProgram *prog);

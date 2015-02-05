@@ -1,6 +1,10 @@
 #include "glslprogram.h"
 #include "gl_core_3_3.h"
 
+using glm::vec4;
+using glm::vec3;
+using glm::mat3;
+using glm::mat4;
 
 void GLSLProgram::use()
 {

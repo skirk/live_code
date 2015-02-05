@@ -1,28 +1,21 @@
-#include <fstream>
-#include <sstream>
-
+//c
 #include <unistd.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <cstdlib>
+
+//cpp
+#include <fstream>
+#include <sstream>
+#include <string>
 
 // OS specific stuff
 #include <sys/stat.h>
 #include <libgen.h>
-#include <string>
+
 #include "gl_core_3_3.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
+#include "sdlutil.h"
 
 using namespace std;
-SDL_Window *createWindow( const char* title,
-		int position_x, int position_y, 
-		int width, int height,
-		Uint32 flags);
-SDL_GLContext createContext (SDL_Window*);
-void deleteContext (SDL_GLContext);
-
-
 
 namespace GLSLShader {
 	enum GLSLShaderType {
@@ -31,23 +24,27 @@ namespace GLSLShader {
 };
 
 
+//prototypes
 bool fileExists( const string & fileName );
-GLuint compileShaderFromFile( const char * fileName, GLSLShader::GLSLShaderType type );
-GLuint  compileShaderFromString( const string & source, GLSLShader::GLSLShaderType type );
+GLuint compileShaderFromFile(const char * fileName, 
+		GLSLShader::GLSLShaderType type );
+GLuint  compileShaderFromString(const string & source,
+	       	GLSLShader::GLSLShaderType type );
+
 
 int link(GLuint programhandle)
 {
 	glLinkProgram(programhandle);
 
 	int status = 0;
-	glGetProgramiv( programhandle, GL_LINK_STATUS, &status);
-	if( GL_FALSE == status ) {
+	glGetProgramiv(programhandle, GL_LINK_STATUS, &status);
+	if (GL_FALSE == status) {
 		int length = 0;
 		char *logString;
 
-		glGetProgramiv(programhandle, GL_INFO_LOG_LENGTH, &length );
+		glGetProgramiv(programhandle, GL_INFO_LOG_LENGTH, &length);
 
-		if( length > 0 ) {
+		if (length > 0) {
 			char * c_log = new char[length];
 			int written = 0;
 			glGetProgramInfoLog(programhandle, length, &written, c_log);
@@ -64,36 +61,35 @@ int link(GLuint programhandle)
 
 
 
-GLuint compileShaderFromFile( const char * fileName,
+GLuint compileShaderFromFile(const char * fileName,
 		GLSLShader::GLSLShaderType type )
 {
-	if( ! fileExists(fileName) )
-	{
+	if (!fileExists(fileName)) {
 		fprintf(stderr, "FILE not found :");
 		return -EXIT_FAILURE;
 	}
 
-	ifstream inFile( fileName, ios::in );
-	if( !inFile ) {
+	ifstream inFile(fileName, ios::in);
+	if ( !inFile ) {
 		fprintf(stderr, "Failed to open file");
 		return -EXIT_FAILURE;
 	}
 
 	ostringstream code;
-	while( inFile.good() ) {
+	while (inFile.good()) {
 		int c = inFile.get();
-		if( ! inFile.eof() ) code << (char) c;
+		if (!inFile.eof()) code << (char) c;
 	}
 	inFile.close();
 
 	return compileShaderFromString(code.str(), type);
 }
 
-GLuint  compileShaderFromString( const string & source, GLSLShader::GLSLShaderType type )
+GLuint  compileShaderFromString(const string & source, GLSLShader::GLSLShaderType type)
 {
 	GLuint shaderHandle = 0;
 
-	switch( type ) {
+	switch (type) {
 		case GLSLShader::VERTEX:
 			shaderHandle = glCreateShader(GL_VERTEX_SHADER);
 			break;
@@ -108,19 +104,19 @@ GLuint  compileShaderFromString( const string & source, GLSLShader::GLSLShaderTy
 	}
 
 	const char * c_code = source.c_str();
-	glShaderSource( shaderHandle, 1, &c_code, NULL );
+	glShaderSource(shaderHandle, 1, &c_code, NULL);
 
 	// Compile the shader
 	glCompileShader(shaderHandle);
 
 	// Check for errors
 	int result;
-	glGetShaderiv( shaderHandle, GL_COMPILE_STATUS, &result );
-	if( GL_FALSE == result ) {
+	glGetShaderiv(shaderHandle, GL_COMPILE_STATUS, &result);
+	if (GL_FALSE == result) {
 		// Compile failed, store log and return false
 		int length = 0;
 		glGetShaderiv(shaderHandle, GL_INFO_LOG_LENGTH, &length );
-		if( length > 0 ) {
+		if (length > 0 ) {
 			char * c_log = new char[length];
 			int written = 0;
 			glGetShaderInfoLog(shaderHandle, length, &written, c_log);
@@ -134,36 +130,7 @@ GLuint  compileShaderFromString( const string & source, GLSLShader::GLSLShaderTy
 	}
 }
 
-
-/*
-   void compileAndLinkShader(GLSLProgram *prog, char *vertex, char *fragment) {
-
-   if (! prog->compileShaderFromFile(vertex,GLSLShader::VERTEX))
-   {
-   printf("Vertex shader failed to compile!\n%s",
-   prog->log().c_str());
-   exit(1);
-   }
-   if( ! prog->compileShaderFromFile(fragment ,GLSLShader::FRAGMENT))
-   {
-   printf("Fragment shader failed to compile!\n%s",
-   prog->log().c_str());
-   exit(1);
-   }
-   if( ! prog->link() )
-   {
-   printf("Shader program failed to link!\n%s",
-   prog->log().c_str());
-   exit(1);
-   }
-
-   prog->use();
-   int numShaders;
-   glGetAttachedShaders(prog, 3,
-   }
-   */
-
-bool fileExists( const string & fileName )
+bool fileExists(const string & fileName)
 {
 	struct stat info;
 	int ret = -1;
@@ -174,8 +141,7 @@ bool fileExists( const string & fileName )
 
 #define printable(ch) (isprint((unsigned char) ch) ? ch : '#')
 
-static void /* Print "usage" message and exit */
-usageError(char *progName, const char *msg, int opt)
+static void usageError(char *progName, const char *msg, int opt)
 {
 	if (msg != NULL && opt != 0)
 		fprintf(stderr, "%s (-%c)\n", msg, printable(opt));
@@ -194,9 +160,8 @@ int main(int argc, char* argv[]) {
 	shaderData shaders[2];
 	int opt, i = 0;
 	extern char *optarg;
-	char *binaryTarget;
+	char *binaryTarget(NULL);
 	while ((opt = getopt(argc, argv, ":v:f:g:o:")) != -1) {
-		printf("\n");
 		switch (opt) {
 			case 'v': shaders [i++] = {GLSLShader::VERTEX,   optarg};  break;
 			case 'f': shaders [i++] = {GLSLShader::FRAGMENT, optarg};  break;
@@ -204,20 +169,20 @@ int main(int argc, char* argv[]) {
 			case 'o': binaryTarget = optarg; break;
 			case ':': usageError(argv[0], "Missing argument", optopt);
 			case '?': usageError(argv[0], "Unrecognized option", optopt);
-			default: perror("Unexpected case in switch()");
-
+			default: fprintf(stderr, "Unexpected case in switch()");
 		}
 	}
 
-	SDL_Window *win = createWindow("shader", 0, 0, 512, 512,  SDL_WINDOW_OPENGL);
+	//Create dummy context for compilation
+	SDL_Window *win = createWindow("compiler", 0, 0, 0, 0,  SDL_WINDOW_OPENGL);
 	SDL_GLContext context = createContext(win);
 
-	if(ogl_LoadFunctions() == ogl_LOAD_FAILED) {
+	if (ogl_LoadFunctions() == ogl_LOAD_FAILED) {
 		fprintf(stderr, "OGL functions failed to load\n");
 		return EXIT_FAILURE;
 	}
 	GLuint handle = glCreateProgram();
-	// PROGRAM_BINARY_RETRIEVABLE_HINT 
+	//0x8257 = PROGRAM_BINARY_RETRIEVABLE_HINT 
 	glProgramParameteri(handle,  0x8257 , GL_TRUE);
 	if (handle == 0)  {
 		fprintf(stderr, "Unable to create a shader program\n");
@@ -226,9 +191,10 @@ int main(int argc, char* argv[]) {
 
 	for (int j=0; j<i; j++) {
 		GLuint shader = compileShaderFromFile( shaders[j].file, shaders[j].type);
-		if (shader > 0 ) {
+		if (shader > 0) {
 			glAttachShader(handle, shader);
 		} else {
+			fprintf(stderr, "Attaching shader failed\n");
 			return EXIT_FAILURE;
 		}
 	}
@@ -237,6 +203,7 @@ int main(int argc, char* argv[]) {
 		return EXIT_FAILURE;
 	}
 
+	//store to binary
 	int nformats;
 	glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &nformats);
 	GLint formats[nformats];
@@ -249,7 +216,7 @@ int main(int argc, char* argv[]) {
 	glGetProgramBinary(handle, binaryLength, NULL, (GLenum*)&formats[0], binary);
 
 	FILE*   outfile;
-	if ( (outfile = fopen(binaryTarget, "wb")) == NULL ) {
+	if ((outfile = fopen(binaryTarget, "wb")) == NULL) {
 		fprintf(stderr, "Couldn't open file%s\n", binaryTarget);
 		return EXIT_FAILURE;
 	}
@@ -257,45 +224,7 @@ int main(int argc, char* argv[]) {
 	fclose(outfile);
 	free(binary);
 
-
-
 	deleteContext(context);
 	return EXIT_SUCCESS;
 }
-
-SDL_Window *createWindow(const char* title, int position_x, int position_y, int width, int height, Uint32 flags) {
-
-	if(SDL_Init(SDL_INIT_VIDEO) < 0){
-		fprintf(stderr, "SDL_Init Error: %s", SDL_GetError());
-	}
-
-	SDL_Window *win; // window to hold our context
-	win = SDL_CreateWindow(title, position_x, position_y, width, height, flags); 
-	if (win == NULL) { 
-		fprintf(stderr, "SDL_CreateWindow Error: %s ", SDL_GetError());
-	}
-
-	return win;
-}
-
-SDL_GLContext createContext(SDL_Window *win) {
-
-	SDL_GL_SetSwapInterval(1);
-
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
-	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-	SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
-
-	SDL_GLContext context = SDL_GL_CreateContext( win );
-
-
-	return context;
-}
-
-void deleteContext(SDL_GLContext ctx) {
-	SDL_GL_DeleteContext(ctx);
-}
-
 

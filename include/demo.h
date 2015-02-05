@@ -1,9 +1,8 @@
 #ifndef _DEMO_H_
 #define _DEMO_H_
+
 #include "glslprogram.h"
 #include <opencv2/opencv.hpp>
-
-using namespace cv;
 
 struct demo_memory {
 	bool isInitialized;	
@@ -13,8 +12,8 @@ struct demo_memory {
 };
 
 struct demo_state {
+	cv::VideoCapture *cap; //camera feed
 	GLSLProgram shader;
-	VideoCapture *cap; // open the default camera
 	GLuint texture;
 	GLuint vboHandles[3];
 	GLuint vaoHandle;
@@ -22,6 +21,5 @@ struct demo_state {
 	int xcells;
 	int ycells;
 };
-
 
 #endif

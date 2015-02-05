@@ -1,30 +1,21 @@
-#include "demo.h"
-
 #include <iostream>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h> 
 #include <cstdlib>
 #include <dlfcn.h> 
 #include <sys/inotify.h>
 #include <unistd.h>
 
 #include "gl_core_3_3.h"
+#include "demo.h"
+#include "sdlutil.h"
 
+using namespace cv;
 
 #define Kilobytes(Value) ((Value)*1024)
 #define Megabytes(Value) (Kilobytes(Value)*1024)
 #define BUF_LEN (10 * (sizeof(struct inotify_event) + NAME_MAX +1))
 
+//demo functions
 struct demo_app {
-	
-	demo_app & operator= (const demo_app &c) {
-		       	demoLib= c.demoLib;
-		       	initf = c.initf;
-		       	updatef = c.updatef;
-		       	renderf = c.renderf;
-		       	updateshaderf = c.updateshaderf;
-			return *this;
-	};
 	void *demoLib;
 	void (*initf)( demo_memory* );
 	void (*updatef)( demo_memory*);
@@ -33,16 +24,10 @@ struct demo_app {
 };
 
 //prototypes
-static SDL_Window *createWindow( const char* title,
-		int position_x, int position_y, 
-		int width, int height,
-		Uint32 flags);
-static SDL_GLContext createContext (SDL_Window*);
-static void deleteContext (SDL_GLContext);
+
 static void mainloop(SDL_Window *_win);
 static int loadDemo(demo_app *demo, char *demopath);
 static void closeDemo(demo_app demo);
-
 
 
 int main() {
@@ -76,22 +61,26 @@ void mainloop (SDL_Window *_win) {
 	//no further allocations from the heap
 	demo_memory mem = {};
 	mem.memorySize = Megabytes (5);
-
 	mem.permanentMemory = calloc(mem.memorySize, sizeof(char));
-	if (mem.permanentMemory == NULL)
-		perror("Couldn't allocate memory");
+	
+	if (mem.permanentMemory == NULL) {
+		fprintf(stderr, "Couldn't allocate memory");
+		exit(EXIT_FAILURE);
+	}
+
+	//camera memory
 	mem.videoCapMem = malloc(sizeof(VideoCapture));
 
 	//set file watch
 	inotifyFd = inotify_init1(IN_NONBLOCK);
 	if (inotifyFd == -1) {
-		perror("Couldn't init inotify");
-		exit(EXIT_FAILURE)
+		fprintf(stderr, "Couldn't init inotify");
+		exit(EXIT_FAILURE);
 	}
 	wd = inotify_add_watch(inotifyFd, "obj/", IN_CLOSE_WRITE);
 	if (wd == -1) {
-		perror("Couldn't inotify_add_watch");
-		exit(EXIT_FAILURE)
+		fprintf(stderr, "Couldn't inotify_add_watch");
+		exit(EXIT_FAILURE);
 	}
 
 
@@ -140,46 +129,6 @@ void mainloop (SDL_Window *_win) {
 		SDL_GL_SwapWindow(_win);
 	}
 	SDL_Quit();
-}
-
-SDL_Window *createWindow(const char* title, int position_x, int position_y,
-		int width, int height, Uint32 flags) {
-
-	if(SDL_Init(SDL_INIT_VIDEO) < 0){
-		std::cout << "SDL_Init Error: "<< SDL_GetError() << std::endl;
-	}
-
-	SDL_Window *win; // window to hold our context
-	win = SDL_CreateWindow(title, position_x, position_y, width, height, flags); 
-	if (win == NULL) { 
-		std::cout<< "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
-	}
-
-	return win;
-}
-
-SDL_GLContext createContext(SDL_Window *win) {
-
-	SDL_GL_SetSwapInterval(1);
-
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
-	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-	SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, 
-			SDL_GL_CONTEXT_PROFILE_CORE );
-
-	SDL_GLContext context = SDL_GL_CreateContext( win );
-
-	if (ogl_LoadFunctions() == ogl_LOAD_FAILED) 
-		perror("OGL functions failed to load\n");
-
-
-	return context;
-}
-
-void deleteContext(SDL_GLContext ctx) {
-	SDL_GL_DeleteContext(ctx);
 }
 
 int loadDemo(demo_app *demo, char *demopath) { 
